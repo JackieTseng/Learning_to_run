@@ -1,0 +1,2 @@
+#name iteration train val test
+sample1 500000 0.9137 1.638 1.8791
