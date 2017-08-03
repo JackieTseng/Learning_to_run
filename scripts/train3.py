@@ -46,14 +46,14 @@ init = 'lecun_uniform'
 # Next, we build a very simple model.
 actor = Sequential()
 actor.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-actor.add(GaussianNoise(0.01)) # add to the command line!
+actor.add(GaussianNoise(0.01))
 actor.add(Dense(32, init = init))
 actor.add(Activation('relu'))
 actor.add(Dense(32, init = init))
 actor.add(Activation('relu'))
 actor.add(Dense(32, init = init))
 actor.add(Activation('relu'))
-actor.add(Dense(nb_actions, init = init)
+actor.add(Dense(nb_actions, init = init))
 actor.add(GaussianNoise(0.01))
 actor.add(Activation('sigmoid'))
 #print(actor.summary())
