@@ -5,13 +5,15 @@ import sys
 
 from keras.models import Sequential, Model
 from keras.layers import Dense, Activation, Flatten, Input, concatenate
-from keras.optimizers import Adam
+from keras.layers.noise import GaussianNoise
+from keras.optimizers import Adam, Nadam
 
 import numpy as np
 
 from rl.agents import DDPGAgent
 from rl.memory import SequentialMemory
 from rl.random import OrnsteinUhlenbeckProcess
+from rl.callbacks import FileLogger, ModelIntervalCheckpoint
 
 from osim.env import *
 
@@ -24,7 +26,7 @@ import math
 parser = argparse.ArgumentParser(description='Train or test neural net motor controller')
 parser.add_argument('--train', dest='train', action='store_true', default=True)
 parser.add_argument('--test', dest='train', action='store_false', default=True)
-parser.add_argument('--steps', dest='steps', action='store', default=30000000, type=int)
+parser.add_argument('--steps', dest='steps', action='store', default=10000, type=int)
 parser.add_argument('--visualize', dest='visualize', action='store_true', default=False)
 parser.add_argument('--model', dest='model', action='store', default="example.h5f")
 args = parser.parse_args()
@@ -36,19 +38,23 @@ env.reset()
 nb_actions = env.action_space.shape[0]
 
 # Total number of steps in training
-nallsteps = args.steps
+#nallsteps = args.steps
+nallsteps = 30000000
+init = 'lecun_uniform'
 
 # Create networks for DDPG
 # Next, we build a very simple model.
 actor = Sequential()
 actor.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-actor.add(Dense(32))
+actor.add(GaussianNoise(0.01)) # add to the command line!
+actor.add(Dense(32), init = init)
 actor.add(Activation('relu'))
-actor.add(Dense(32))
+actor.add(Dense(32), init = init)
 actor.add(Activation('relu'))
-actor.add(Dense(32))
+actor.add(Dense(32), init = init)
 actor.add(Activation('relu'))
-actor.add(Dense(nb_actions))
+actor.add(Dense(nb_actions), init = init)
+actor.add(GaussianNoise(0.01))
 actor.add(Activation('sigmoid'))
 #print(actor.summary())
 
@@ -56,11 +62,12 @@ action_input = Input(shape=(nb_actions,), name='action_input')
 observation_input = Input(shape=(1,) + env.observation_space.shape, name='observation_input')
 flattened_observation = Flatten()(observation_input)
 x = concatenate([action_input, flattened_observation])
-x = Dense(64)(x)
+x = GaussianNoise(0.01)(x)
+x = Dense(64, init = init)(x)
 x = Activation('relu')(x)
-x = Dense(64)(x)
+x = Dense(64, init = init)(x)
 x = Activation('relu')(x)
-x = Dense(64)(x)
+x = Dense(64, init = init)(x)
 x = Activation('relu')(x)
 x = Dense(1)(x)
 x = Activation('linear')(x)
@@ -68,16 +75,16 @@ critic = Model(inputs=[action_input, observation_input], outputs=x)
 #print(critic.summary())
 
 # Set up the agent for training
-memory = SequentialMemory(limit=100000, window_length=1)
+memory = SequentialMemory(limit=1000000, window_length=1)
 random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.noutput)
 agent = DDPGAgent(nb_actions=nb_actions, actor=actor, critic=critic, critic_action_input=action_input,
-                  memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
+                  memory=memory, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
                   random_process=random_process, gamma=.99, target_model_update=1e-3,
-                  delta_clip=1.)
+                  delta_clip=1., batch_size=128)
 # agent = ContinuousDQNAgent(nb_actions=env.noutput, V_model=V_model, L_model=L_model, mu_model=mu_model,
 #                            memory=memory, nb_steps_warmup=1000, random_process=random_process,
 #                            gamma=.99, target_model_update=0.1)
-agent.compile([Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)], metrics=['mae'])
+agent.compile([Nadam(lr=.0001, clipnorm=1.), Nadam(lr=.0001, clipnorm=1.)], metrics=['mae'])
 
 # Okay, now it's time to learn something! We visualize the training here for show, but this
 # slows down training quite a lot. You can always safely abort the training prematurely using
