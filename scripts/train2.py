@@ -79,7 +79,7 @@ agent = DDPGAgent(nb_actions=nb_actions, actor=actor, critic=critic, critic_acti
 # agent = ContinuousDQNAgent(nb_actions=env.noutput, V_model=V_model, L_model=L_model, mu_model=mu_model,
 #                            memory=memory, nb_steps_warmup=1000, random_process=random_process,
 #                            gamma=.99, target_model_update=0.1)
-agent.compile([Adam(lr=.001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)] metrics=['mae'])
+agent.compile([Adam(lr=.0001, clipnorm=1.), Adam(lr=.001, clipnorm=1.)] metrics=['mae'])
 
 # Okay, now it's time to learn something! We visualize the training here for show, but this
 # slows down training quite a lot. You can always safely abort the training prematurely using
